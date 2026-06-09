@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>បាក់ឌុប Countdown — Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruuy+Pro:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kantumruuy Pro', sans-serif;
+            background: radial-gradient(circle at top, #fdfbf7 0%, #f4eee4 100%);
+        }
+        
+        /* កាតប្រភេទអក្សរសុទ្ធ ឌីហ្សាញបែប Premium Poster */
+        .premium-poster-card {
+            background-color: #ffffff;
+            border: 1px solid rgba(223, 206, 193, 0.7);
+            box-shadow: 0 35px 70px rgba(112, 87, 73, 0.08), 0 10px 25px rgba(0, 0, 0, 0.01);
+            border-radius: 40px;
+            width: 100%;
+            max-width: 355px;
+            padding: 50px 32px;
+            margin: 0 auto;
+            text-align: center;
+            box-sizing: border-box;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .premium-poster-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, #ebdcd0, #e97a5a, #ebdcd0);
+        }
+
+        .main-quote-box {
+            font-size: 16.5px;
+            font-weight: 500;
+            color: #2d2522;
+            line-height: 1.75;
+            margin: 35px 0;
+            padding: 0 5px;
+            display: block;
+        }
+
+        .live-time-counter {
+            font-size: 13px;
+            color: #e97a5a;
+            font-weight: 600;
+            line-height: 1.6;
+            background: linear-gradient(145deg, #fdfcf7, #f6f1e9);
+            border: 1px solid rgba(233, 122, 90, 0.15);
+            padding: 14px 18px;
+            border-radius: 20px;
+            display: inline-block;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .copyright-tag {
+            font-size: 11px;
+            color: #bfaea2;
+            display: block;
+            border-top: 1px dashed #ebdcd0;
+            padding-top: 22px;
+            margin-top: 40px;
+        }
+
+        /* ស្ទីលផ្ទាំងលោតអរគុណ (Thank You Modal) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(45, 37, 34, 0.5);
+            backdrop-filter: blur(4px);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .thank-you-box {
+            background-color: #ffffff;
+            padding: 35px 25px;
+            border-radius: 32px;
+            max-width: 310px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            transform: scale(0.85);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.open .thank-you-box {
+            transform: scale(1);
+        }
+
+        #customToast {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translate(-50%, 20px);
+        }
+        #customToast.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-5 relative">
+
+    <div id="customToast" class="opacity-0 fixed bottom-10 left-1/2 -translate-x-1/2 bg-[#2d2522] text-[#fbf7f0] px-6 py-3 rounded-full text-xs font-medium shadow-xl z-50 pointer-events-none">
+        ⏳ <span id="toastMessage">កំពុងដំណើរការ...</span>
+    </div>
+
+    <div id="thankYouModal" class="modal-overlay">
+        <div class="thank-you-box">
+            <div class="w-16 h-16 bg-[#fff8f5] border border-[#fceee9] rounded-full flex items-center justify-center mx-auto mb-4 animate-bounce">
+                <span class="text-3xl">💖</span>
+            </div>
+            <h3 class="text-lg font-bold text-[#2d2522] mb-2">សូមអរគុណសម្រាប់ការស៊ែរ!</h3>
+            <p class="text-xs text-[#a38b7a] leading-relaxed mb-5">
+                រូបភាពកាលវិភាគបាក់ឌុបរបស់អ្នក ត្រូវបានផ្ញើចូលទៅក្នុងរ៉ូបូត (Bot) រួចរាល់ហើយ! សូមចូលទៅពិនិត្យមើល។
+            </p>
+            <button onclick="closeModal()" class="bg-[#e97a5a] hover:bg-[#de6b4b] text-white text-xs font-semibold px-6 py-2.5 rounded-xl transition-all shadow-sm active:scale-95">
+                យល់ព្រម
+            </button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-sm flex flex-col gap-5">
+
+        <div id="captureCard" class="premium-poster-card">
+            
+            <span style="font-size: 10px; font-weight: 700; color: #bfaea2; display: block; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 0.2em;">បាក់ឌុប COUNTDOWN BOT</span>
+            
+            <h1 style="font-size: 25px; font-weight: 700; color: #2d2522; margin-bottom: 5px;">
+                ស៊ូៗណា <span id="username" style="color: #e97a5a;">Ra</span>! 🎯
+            </h1>
+            
+            <p style="font-size: 11.5px; color: #a38b7a; font-weight: 500;">សម័យប្រឡង៖ ០៨ សីហា ២០២៦</p>
+
+            <p class="main-quote-box">
+                “ពេលវេលាកំពុងដើរទៅមុខហើយ ខំប្រឹងបន្តិចទៀតណាជិតដល់ថ្ងៃសម្រេចសុបិនហើយ!”
+            </p>
+
+            <div id="liveCountdownText" class="live-time-counter">
+                កំពុងគណនាពេលវេលា...
+            </div>
+
+            <span class="copyright-tag">
+                រក្សាសិទ្ធិដោយ @KhlomSarbot
+            </span>
+        </div>
+
+        <button onclick="downloadAndSend()" class="w-full bg-[#2d2522] hover:bg-[#3d332e] text-[#fdfbf7] text-xs font-semibold py-4 rounded-2xl transition-all flex items-center justify-center gap-2 shadow-md active:scale-95">
+            📥 <span>ទាញយករូបភាព & ផ្ញើចូល Telegram</span>
+        </button>
+
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const BOT_TOKEN = "8357461158:AAF01hj41pgjJy3J8xET3ynBxslIXZuNxUM";
+        
+        let userId = "5010333081"; // លេខ ID តេស្តលំនាំដើម
+        let nameUser = "Ra";
+        let userTag = "";
+
+        // ប្រព័ន្ធស្កែនឆែករក Username, First Name, និង User ID ពី Telegram ពិតប្រាកដ
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+            nameUser = tg.initDataUnsafe.user.first_name;
+            
+            if (tg.initDataUnsafe.user.username) {
+                userTag = "(@" + tg.initDataUnsafe.user.username + ")";
+                document.getElementById('username').innerText = `${nameUser} ${userTag}`;
+            } else {
+                document.getElementById('username').innerText = nameUser;
+            }
+        }
+
+        const targetDate = new Date('August 8, 2026 07:00:00').getTime();
+
+        function showToast(message) {
+            const toast = document.getElementById('customToast');
+            document.getElementById('toastMessage').innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        }
+
+        function openModal() {
+            document.getElementById('thankYouModal').classList.add('open');
+        }
+
+        function closeModal() {
+            document.getElementById('thankYouModal').classList.remove('open');
+        }
+
+        function downloadAndSend() {
+            const card = document.getElementById('captureCard');
+            showToast("⏳ ប្រព័ន្ធកំពុងថតរូបភាព និងផ្ញើចូល Bot របស់អ្នក...");
+
+            html2canvas(card, { 
+                backgroundColor: '#ffffff', 
+                scale: 3, 
+                useCORS: true,
+                logging: false
+            }).then(canvas => {
+                
+                const imageUri = canvas.toDataURL("image/png");
+                const link = document.createElement('a');
+                link.download = `BacII-Countdown-${nameUser}.png`;
+                link.href = imageUri;
+                link.click();
+
+                canvas.toBlob(function(blob) {
+                    const formData = new FormData();
+                    formData.append('chat_id', userId); // ផ្ញើទៅកាន់ ID អ្នកចុចចូលលេងផ្ទាល់
+                    formData.append('photo', blob, `countdown-${nameUser}.png`);
+                    
+                    const liveText = document.getElementById('liveCountdownText').innerText;
+                    formData.append('caption', `🎯 ស៊ូៗណា ${nameUser} ${userTag}! ${liveText}។ រក្សាសិទ្ធិដោយ @KhlomSarbot 🌸✨`);
+
+                    fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if(data.ok) {
+                            // បើផ្ញើជោគជ័យ លោតផ្ទាំងអរគុណដ៏ស្អាតមកភ្លាម
+                            openModal();
+                        } else {
+                            showToast("❌ ផ្ញើរូបភាពមិនជោគជ័យ! សូមចុច /start រ៉ូបូតជាមុនសិន។");
+                        }
+                    })
+                    .catch(err => {
+                        showToast("❌ បរាជ័យ! មានបញ្ហាប្រព័ន្ធអ៊ីនធឺណិតរបស់អ្នក។");
+                    });
+                }, 'image/png');
+
+            });
+        }
+
+        // មុខងារគណនាពេលវេលា Live
+        function updateCountdown() {
+            const now = new Date().getTime();
+            const difference = targetDate - now;
+
+            if (difference <= 0) {
+                document.getElementById('liveCountdownText').innerText = "⏳ ដល់ពេលប្រឡងហើយ! ស៊ូៗណាផ្ដាច់ញាតិ!";
+                return;
+            }
+
+            const days = Math.floor(difference / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((difference % (1000 * 60)) / 1000);
+
+            const months = Math.floor(days / 30);
+            const remainingDays = days % 30;
+
+            let liveString = `⏳ នៅសល់ `;
+            if (months > 0) liveString += `${months} ខែ `;
+            liveString += `${remainingDays} ថ្ងៃ ${hours} ម៉ោង ${minutes} នាទី ${seconds} វិនាទី`;
+
+            document.getElementById('liveCountdownText').innerText = liveString;
+        }
+
+        setInterval(updateCountdown, 1000);
+        updateCountdown();
+    </script>
+</body>
+  </html>
+
